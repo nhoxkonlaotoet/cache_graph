@@ -64,7 +64,7 @@ The app-facing API is `ApiCache` in `lib/api_cache.dart`:
 
 - [`config_sample/1_cache_config_simple.json`](config_sample/1_cache_config_simple.json): a wildcard rule for all GET paths.
 - [`config_sample/2_cache_config_explicit_paths.json`](config_sample/2_cache_config_explicit_paths.json): explicit paths, different scopes, and invalidation relationships.
-- [`docs/cache_graph_flow_raw_en.txt`](docs/cache_graph_flow_raw_en.txt): detailed English text flow.
-- [`docs/cache_graph_flow_en.png`](docs/cache_graph_flow_en.png): English flow diagram.
+- [`doc/cache_graph_flow_raw_en.txt`](doc/cache_graph_flow_raw_en.txt): detailed English text flow.
+- [`doc/cache_graph_flow_en.png`](doc/cache_graph_flow_en.png): English flow diagram.
 
 The JSON files are examples. The current implementation receives configuration through `ApiCache.configure(...)` callbacks and does not load these files automatically.

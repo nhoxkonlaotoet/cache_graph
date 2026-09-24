@@ -64,7 +64,7 @@ API dành cho app là `ApiCache` trong `lib/api_cache.dart`:
 
 - [`config_sample/1_cache_config_simple.json`](config_sample/1_cache_config_simple.json): rule wildcard cho mọi GET.
 - [`config_sample/2_cache_config_explicit_paths.json`](config_sample/2_cache_config_explicit_paths.json): path cụ thể, nhiều scope và quan hệ vô hiệu hóa cache.
-- [`docs/cache_graph_flow_raw_vi.txt`](docs/cache_graph_flow_raw_vi.txt): luồng chi tiết bằng tiếng Việt dạng text.
-- [`docs/cache_graph_flow_vi.png`](docs/cache_graph_flow_vi.png): sơ đồ luồng tiếng Việt.
+- [`doc/cache_graph_flow_raw_vi.txt`](doc/cache_graph_flow_raw_vi.txt): luồng chi tiết bằng tiếng Việt dạng text.
+- [`doc/cache_graph_flow_vi.png`](doc/cache_graph_flow_vi.png): sơ đồ luồng tiếng Việt.
 
 Các file JSON chỉ là ví dụ. Code hiện tại nhận cấu hình qua callback `ApiCache.configure(...)` và chưa tự đọc các file này.
