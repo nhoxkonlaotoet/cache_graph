@@ -1,0 +1,98 @@
+CACHE GRAPH - LUONG HOAT DONG HIEN TAI (DIO)
+=======================================
+
+1. KHOI TAO
+
+  App
+   |
+   +-- ApiCache.configure(...)
+   |     +-- isEnabled, configs, relationships, clearBefore
+   |     +-- reFetch, logError, logCacheStats
+   |
+   +-- Them 3 interceptor vao Dio:
+   |     ReadCacheInterceptor -> WriteCacheInterceptor -> StaleCacheInterceptor
+   |
+   +-- Sau login: startLoginSession() -> openDatabase(id: userId)
+         +-- Mo SQLite rieng cho id
+         +-- Xoa cache cu hon clearBefore (neu co)
+         +-- Nap relationships vao bang api_cache_relationship
+
+  Ghi chu: cac file JSON trong lib/sample chi la mau dau vao. Code hien tai
+  nhan config qua callback ApiCache.configure(...), chua doc JSON tu dong.
+
+
+2. GET: DOC CACHE TRUOC KHI GOI MANG
+
+  App goi GET
+      |
+      v
+  ReadCacheInterceptor.onRequest
+      |
+      +-- Cache tat / DB chua mo / khong co rule hop le? ---> Goi API
+      |
+      +-- Chon rule: URL cu the uu tien hon paths ["*"]
+      |     +-- time: TTL phai > 0
+      |     +-- appSession: dung ID phien app hien tai
+      |     +-- loginSession: can ID phien login hien tai
+      |
+      +-- Tao cache key tu URL + query da sap xep
+      |
+      +-- Tim SQLite: dung key, scope, phien, TTL, clearBefore;
+      |               chua bi stale, chua bi soft-delete, chua het han
+      |
+      +-- HIT ---> Tra response tu cache (HTTP 200)
+      |              |
+      |              +-- Du 3 hit cung key trong 1 phut?
+      |                    +-- Danh dau stale trong nen
+      |                    +-- Goi reFetch trong nen neu key la URL day du
+      |                    +-- Request hien tai van nhan response cache
+      |
+      +-- MISS --> Goi API
+                     |
+                     +-- Thanh cong -> WriteCacheInterceptor.onResponse
+                     |                  +-- Neu GET co rule: luu body vao SQLite
+                     |                  +-- Luu scope, session ID, allowStale,
+                     |                      thoi diem tao va thoi diem het han
+                     |
+                     +-- Loi ket noi / HTTP 502 / 503
+                           -> StaleCacheInterceptor.onError
+                              +-- Tim entry da stale, allowStale = true,
+                              |   dung scope/TTL, chua bi soft-delete
+                              +-- Co: tra response cache (HTTP 200)
+                              +-- Khong: chuyen loi cho app
+
+
+3. POST / PUT / PATCH / DELETE: INVALIDATE THEO GRAPH
+
+  API ghi tra response thanh cong
+      |
+      v
+  WriteCacheInterceptor.onResponse
+      |
+      +-- Lay write path va request body
+      +-- Tra bang api_cache_relationship theo write path
+      +-- Neu bodyRegex co gia tri: chi lay canh khop request body
+      |
+      +-- Moi stale path tim cac cache key GET dang duoc luu
+      |     Vi du:
+      |
+      |       POST actionLog --------> GET visitPlan/staff
+      |                         \----> GET actionLog/lastStaffAction
+      |
+      +-- Danh dau cac cache key lien quan is_delete = 1
+      +-- Voi canh refetch = true: goi reFetch trong nen
+      +-- Tra response ghi cho app; invalidate chay bat dong bo
+
+  Cache bi soft-delete khong duoc dung de tra GET thong thuong hoac
+  stale fallback. GET tiep theo se lay du lieu moi tu API.
+
+
+4. CAC THANH PHAN CHINH
+
+  ApiCacheConfig              : Chon GET nao duoc cache; paths, TTL, scope.
+  ApiCacheRelationship        : Dinh nghia canh write path -> stale path.
+  ApiCacheDelegate            : Cung cap config/callback dong cho engine.
+  ApiCacheSession             : Tao ID phien app va phien login.
+  ApiCacheResponseDatabase    : Luu, doc, stale va soft-delete response.
+  ApiCacheRelationshipDatabase: Luu va tra cuu cac canh invalidate.
+  ApiCacheHitRefreshManager   : Dem hit lien tiep de kich hoat refresh nen.

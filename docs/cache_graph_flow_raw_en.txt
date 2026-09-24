@@ -1,0 +1,101 @@
+CACHE GRAPH - CURRENT FLOW (DIO)
+================================
+
+1. INITIALIZATION
+
+  App
+   |
+   +-- ApiCache.configure(...)
+   |     +-- isEnabled, configs, relationships, clearBefore
+   |     +-- reFetch, logError, logCacheStats
+   |
+   +-- Add three interceptors to Dio:
+   |     ReadCacheInterceptor -> WriteCacheInterceptor -> StaleCacheInterceptor
+   |
+   +-- After login: startLoginSession() -> openDatabase(id: userId)
+         +-- Open a separate SQLite database for this ID
+         +-- Remove cache entries older than clearBefore, if set
+         +-- Load relationships into api_cache_relationship
+
+  Note: JSON files in config_sample/ are input examples. The current code
+  receives configuration through ApiCache.configure(...) callbacks; it does
+  not load those JSON files automatically.
+
+
+2. GET: READ CACHE BEFORE THE NETWORK REQUEST
+
+  App sends GET
+      |
+      v
+  ReadCacheInterceptor.onRequest
+      |
+      +-- Cache disabled / DB closed / no valid rule? ------> Call API
+      |
+      +-- Select rule: an explicit URL takes priority over paths ["*"]
+      |     +-- time: requires a positive TTL
+      |     +-- appSession: uses the current app session ID
+      |     +-- loginSession: requires the current login session ID
+      |
+      +-- Build cache key from URL + sorted query parameters
+      |
+      +-- Query SQLite: matching key, scope, session, TTL, clearBefore;
+      |                 not stale, not soft-deleted, not expired
+      |
+      +-- HIT ---> Return cached response (HTTP 200)
+      |              |
+      |              +-- Three hits for the same key within one minute?
+      |                    +-- Mark the entry stale in the background
+      |                    +-- Call reFetch in the background if the key is
+      |                    |   an absolute URL
+      |                    +-- This request still receives the cached response
+      |
+      +-- MISS --> Call API
+                     |
+                     +-- Success -> WriteCacheInterceptor.onResponse
+                     |              +-- If GET has a rule, save body to SQLite
+                     |              +-- Save scope, session IDs, allowStale,
+                     |                  creation time, and expiration time
+                     |
+                     +-- Connection error / HTTP 502 / 503
+                           -> StaleCacheInterceptor.onError
+                              +-- Find an entry marked stale with
+                              |   allowStale = true, matching scope/TTL,
+                              |   and not soft-deleted
+                              +-- Found: return cached response (HTTP 200)
+                              +-- Missing: forward error to the app
+
+
+3. POST / PUT / PATCH / DELETE: INVALIDATE THROUGH THE GRAPH
+
+  Write API returns a successful response
+      |
+      v
+  WriteCacheInterceptor.onResponse
+      |
+      +-- Read the write path and request body
+      +-- Query api_cache_relationship by write path
+      +-- If bodyRegex is set, keep only edges matching the request body
+      |
+      +-- For each stale path, find its stored GET cache keys
+      |     Example:
+      |
+      |       POST actionLog --------> GET visitPlan/staff
+      |                         \----> GET actionLog/lastStaffAction
+      |
+      +-- Mark related cache keys is_delete = 1
+      +-- For edges with refetch = true, call reFetch in the background
+      +-- Return the write response to the app; invalidation is asynchronous
+
+  Soft-deleted entries cannot serve normal GET requests or stale fallbacks.
+  The next GET retrieves fresh data from the API.
+
+
+4. MAIN COMPONENTS
+
+  ApiCacheConfig              : Selects cacheable GETs; paths, TTL, scope.
+  ApiCacheRelationship        : Defines write path -> stale path edges.
+  ApiCacheDelegate            : Supplies dynamic config and callbacks.
+  ApiCacheSession             : Creates app and login session IDs.
+  ApiCacheResponseDatabase    : Stores, reads, stales, and soft-deletes responses.
+  ApiCacheRelationshipDatabase: Stores and queries invalidation edges.
+  ApiCacheHitRefreshManager   : Counts consecutive hits to trigger refresh.

@@ -1,0 +1,14 @@
+{
+  "isEnabled": true,
+  "clearBefore": null,
+  "configs": [
+    {
+      "paths": [
+        "*"
+      ],
+      "ttlMinutes": 30,
+      "scope": "time",
+      "allowStale": true
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "isEnabled": true,
+  "clearBefore": null,
+  "configs": [
+    {
+      "paths": [
+        "api/v1/salesforce-service/visitPlan/staff"
+      ],
+      "ttlMinutes": 30,
+      "scope": "time",
+      "allowStale": true
+    },
+    {
+      "paths": [
+        "api/v1/salesforce-service/actionLog/lastStaffAction"
+      ],
+      "scope": "appSession",
+      "allowStale": false
+    },
+    {
+      "paths": [
+        "api/v1/outlet-service/customer/m"
+      ],
+      "scope": "loginSession",
+      "allowStale": true
+    }
+  ],
+  "relationships": [
+    {
+      "writePaths": [
+        {
+          "path": "api/v1/visit"
+        }
+      ],
+      "stalePaths": [
+        {
+          "path": "api/v1/customer/list",
+          "refetch": false
+        },
+        {
+          "path": "api/v1/lastVisit",
+          "refetch": false
+        }
+      ]
+    },
+    {
+      "writePaths": [
+        {
+          "path": "api/v1/customer/update"
+        }
+      ],
+      "stalePaths": [
+        {
+          "path": "api/v1/customer/detail",
+          "refetch": true
+        },
+        {
+          "path": "api/v1/customer/list",
+          "refetch": false
+        }
+      ]
+    }
+  ]
+}
